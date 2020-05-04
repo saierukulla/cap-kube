@@ -1,0 +1,244 @@
+
+Kuberenets Architecture:
+==========================
+
+The Kubernetes Architecture has mainly 2 components – the master node and the worker node. 
+As you can see in the below diagram, the master and the worker nodes have many inbuilt components within them. 
+The master node has the kube-controller-manager, kube-apiserver, kube-scheduler, etcd. 
+Whereas the worker node has kubelet and kube-proxy running on each node.
+
+What is the role of kube-apiserver and kube-scheduler?
+
+The kube – apiserver follows the scale-out architecture and, is the front-end of the master node control panel. 
+This exposes all the APIs of the Kubernetes Master node components and is responsible for establishing 
+communication between Kubernetes Node and the Kubernetes master components.
+
+The kube-scheduler is responsible for distribution and management of workload on the worker nodes. 
+So, it selects the most suitable node to run the unscheduled pod based on resource requirement 
+and keeps a track of resource utilization. It makes sure that the workload is not scheduled 
+on nodes which are already full.
+
+Can you brief about the Kubernetes controller manager?
+
+Multiple controller processes run on the master node but are compiled together to run as a 
+single process which is the Kubernetes Controller Manager. 
+So, Controller Manager is a daemon that embeds controllers and does namespace 
+creation and garbage collection. It owns the responsibility and communicates with the API server to manage the end-points.
+
+So, the different types of controller manager running on the master node are :
+Types Of Controllers:
+
+Node Controller==Manages the status of node(creation,updation and Deletion)
+Replication Controller===Maintains the number of pods for every replication object
+Service account and Token Controller===creates default accounts and API access tokens for new namespaces
+Endpoint Controller===Take care of endpoint object likes pods and services.
+
+What is ETCD?
+Etcd is written in Go programming language and is a distributed key-value store 
+used for coordinating between distributed work. So, Etcd stores the configuration 
+data of the Kubernetes cluster, representing the state of the cluster at any given point in time.
+
+
+Daemonset:
+A DaemonSet is a set of pods that is run only once on a host. It's used for host-layer features, 
+for instance a network, host monitoring or storage plugin or other things which you would never want to run more than once on a host
+
+
+What is Kubelet?
+This is an agent service which runs on each node and enables the slave to communicate with the master. 
+So, Kubelet works on the description of containers provided to it in the 
+PodSpec and makes sure that the containers described in the PodSpec are healthy and running
+
+What is ‘Heapster’ in Kubernetes?
+A Heapster is a performance monitoring and metrics collection system for data collected by the Kublet. 
+This aggregator is natively supported and runs like any other pod within a Kubernetes cluster, 
+which allows it to discover and query usage data from all nodes within the cluster.
+
+16. What is a Namespace in Kubernetes?
+Namespaces are used for dividing cluster resources between multiple users. 
+They are meant for environments where there are many users spread across projects or teams and provide a scope of resources.
+
+
+What are the types of controller managers?
+The primary controller managers that can run on the master node are the 
+endpoints controller, service accounts controller, namespace controller, node controller, token controller, and replication controller.
+===================================================================================================
+
+pod.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tomcatpod
+  labels:
+    app: MyApp
+spec:
+  containers:
+  - name: tomcat
+    image: tomcat
+    ports:
+     - containerPort: 8080
+
+========================================================================================================
+multi container using pod.yml
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multi-cont-ex2
+spec:
+  restartPolicy: Never
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+     - containerPort: 80
+  - name: alpine
+    image: alpine
+    command: ['sh', '-c', 'sleep 30']
+
+==========================================================================================================
+replicaset.yml
+
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: my-rs 
+  labels:
+    tier: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        tier: frontend
+    spec:
+      containers:
+      - name: apache
+        image: httpd
+        ports:
+          - containerPort: 80
+=============================================================================================================
+service.yml
+
+apiVersion: apps/v1
+kind: Service
+metadata:
+  name: frontend-svc
+spec:
+  type: NodePort
+  selector:
+    tier: frontend
+  ports:
+  - protocol: TCP
+    port: 80
+#    nodePort: 32105
+=================================================================================================================
+kubectl create -f rs-ex1.yml                # create replica set
+kubectl apply -f rs-ex1.yml                 # update replica set
+
+kubectl get rs                              # List all replica sets in current active namespace
+kubectl get rs -n <namespace>               # List the replica sets in <namespace>
+kubectl get pods | grep tomcatrs            # list the pods associated with rs
+kubectl get rs tomcatrs -o yaml             # detailed object config
+
+kubectl describe rs <rsname>                # inspect the replica set
+kubectl scale --replicas=x rs <rsname>      # Scale up/down replica set
+kubectl expose rs <rsname> --port=<external> --target-port=<internal> # expose rs as service & assign port on the cluster
+kubectl expose rs <rsname> --port=<external> --type=NodePort # expose rs as service & assign port on the Node
+kubectl delete rs <rsname>                  # delete rs & pod under it
+
+========================================================================================================================
+
+
+
+https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.17/#-strong-api-overview-strong-
+
+
+Deployments:
+
+create a manifest file with Kind ReplicaSet & use kubectl to create the object in k8s API Server.
+
+kubectl create -f deployment-ex1.yml --record      # create deployment
+kubectl apply -f deployment-ex1.yml  --record      # update the deployment 
+
+kubectl get deploy                              # List all deployments in current active namespace
+kubectl get deploy -n <namespace>               # List the deployments in <namespace>
+kubectl get pods | grep mydeploy                # list the pods associated with deployment
+kubectl get deploy mydeploy -o yaml             # detailed object config
+
+kubectl describe deploy <deployment>                # inspect the deployment
+kubectl scale --replicas=x deploy <deployment>      # Scale up/down deployment
+kubectl expose deploy <deploy> --port=<external> --target-port=<internal> # expose deployment as service & assign port on the cluster
+kubectl delete deploy <deployment>                  # delete deployment & pod under it
+
+kubectl rollout history deploy <deployname>      # check the revisions of a Deployment
+kubectl rollout history deploy <deployname> --revision=2   # see the details of each revision
+kubectl rollout status deploy <deployname>       # get status of rollout 
+kubectl rollout undo deploy <deployname>         # rollback to the previous revision
+kubectl rollout undo deploy <deployname>  --revision=2     # rollback to a specific revision
+
+========================================================================================================================
+kubectl explain pods
+
+lab:
+====
+kubectl create -f pod.yml                # create the pod
+kubectl get pods                         # list all running pods in current active namespace
+kubectl get pods -n kube-system          # list all running pods in specified namespace
+kubectl get pods --all-namespaces        # list all running pods in all namespaces available
+kubectl get pods -o wide                 # list all running pods in current active namespace wider output
+
+kubectl describe pod <podname>              # detailed output about a pod in current namespace
+kubectl describe pod <podname> -n namespace # detailed output about a pod in current namespace
+kubectl describe pod <podname> -o wide      # detailed output about a pod wider output
+kubectl describe pod <podname> -o yaml      # detailed manifest file from apiserver yaml format
+kubectl describe pod <podname> -o json      # detailed manifest file from apiserver json format
+
+kubectl logs my-pod                                 # dump pod logs (stdout)
+kubectl logs -f my-pod                              # stream pod logs (stdout)
+kubectl logs -f my-pod -c my-container              # stream pod container logs (stdout, multi-container case)
+
+kubectl exec -it my-pod -- /bin/bash     # get interactive shell of the container in existing pod ( 1 container case )
+kubectl exec -it my-pod -c my-container -- /bin/bash # get interative shell of the container in existing pod ( multi container ) 
+
+kubectl expose pod nginx --port=80 --target-port=80  # expose pod as service within the cluster
+kubectl expose pod nginx --target-port=80 --type=NodePort # expose pod as service within the cluster & outside of the cluster
+
+kubectl delete pods <podname>                    # delete a pod in current active namespace
+kubectl delete pods --all                        # delete all pods 
+kubectl delete pod <pod-name> --grace-period=0 --force  # delete pod forcefully
+==========================================================================================================
+
+kubectl scale deployment <deploymentname> --replicas=5 #these command will scale up to desired value
+
+kubectl expose deployment <deploymentname> --port 80 --target-port 80 --type NodePort # these command is like service, but in single command we establish the network 
+to outside world to access the application.
+
+kubectl describe service <serivcename> # these command provide the complete details of service and end point details etc. Based on the endpoint
+details application will forward the request to the pods.
+
+kubectl apply or replace -f <deploymentname>    # these command will update the existing deployment with the new changes we have given in the file.
+
+Apply: updates the objects and can also create if object doesn’t exist.
+Replace: only for updates , the object should exist
+
+kubectl rollout undo deployments <deploymentname>   # these will rollback to previous version of deployment
+
+kubectl rollout undo deployment <deploymentname> --to-revision=2   # with these command we can rollback to particular version by giving the version number
+
+kubectl rollout history deployment <deploymentname>  # these will list the number of version available in the system
+
+Kubectl edit deployments  <deploymentname>  #in these file we can change the parameters min % to what ever required, if want to make any changes
+directly anything, we can use these command without giving yaml file.
+
+https://kubernetes.io/docs/reference/kubectl/cheatsheet/
+
+
+while true; do curl http://10.105.163.20; done 
+
+===================================================================================================
